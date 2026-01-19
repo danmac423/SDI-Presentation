@@ -68,16 +68,27 @@
 #title-slide()
 
 == Plan prezentacji
-#align(horizon)[
-  #set par(leading: 1em)
-  #components.adaptive-columns(outline(
-    target: heading.where(level: 1),
-    title: none,
-    indent: 1em,
-  )) <touying:hidden>
-]
+#set align(horizon)
+#set par(leading: 1.5em)
 
-= Cel pracy
++ Cel pracy
++ Wprowadzenie do problematyki VSR
++ Podstawy teoretyczne: Transformery i Dyfuzja
++ Analiza architektury FlashVSR
++ Optymalizacja i implementacja
++ Ewaluacja i podsumowanie
+
+// == Plan prezentacji
+// #align(horizon)[
+//   #set par(leading: 1em)
+//   #components.adaptive-columns(outline(
+//     target: heading.where(level: 1),
+//     title: none,
+//     indent: 1em,
+//   )) <touying:hidden>
+// ]
+
+// = Cel pracy
 
 == Cel pracy
 
@@ -186,7 +197,7 @@
   W przypadku modeli dyfuzyjnych, wysokie zapotrzebowanie na VRAM podczas inferencji wynika z konieczności alokacji pamięci dla wielowymiarowych map cech oraz macierzy atencji.
 ]
 
-= Podstawy teoretyczne: Transformery i Dyfuzja
+= Podstawy teoretyczne: Transformery i dyfuzja
 
 == Vision Transformer...
 
@@ -448,32 +459,32 @@ W celu uruchomienia modelu na kartach graficznych klasy konsumenckiej, potok prz
       if y == 0 { s.insert("top", 1pt) }
       if y == 1 { s.insert("top", 0.5pt) }
       if y == 1 { s.insert("top", 0.5pt) }
-      if y == 3 { s.insert("top", 0.5pt) }
-      if y == 5 { s.insert("top", 0.5pt) }
-      if y == 5 { s.insert("bottom", 1pt) }
-      if y == 6 { s.insert("bottom", 1pt) }
+      if y == 8 { s.insert("top", 0.5pt) }
+      if y == 8 { s.insert("bottom", 1pt) }
+      if y == 11 { s.insert("bottom", 1pt) }
 
       return s
     },
 
     // --- Nagłówek ---
-    [Zbiór danych], [Metryka],
-    [FlashVSR], [FlashVSR + kafelkowanie], [FlashVSR + kafelkowanie + modyfikacja atencji],
-
-    // --- YouHQ40 ---
-    table.cell(rowspan: 2)[*YouHQ40*],
-    [PSNR$arrow.t$], [0], [0], [0],
-    [SSIM$arrow.t$], [0], [0], [0],
+    [Zbiór danych], [Metryka], [FlashVSR], [FlashVSR + kafelkowanie], [FlashVSR + kafelkowanie + modyfikacja atencji],
 
     // --- REDS ---
-    table.cell(rowspan: 2)[*REDS*],
-    [PSNR$arrow.t$], [0], [0], [0],
-    [SSIM$arrow.t$], [0], [0], [0],
+    table.cell(rowspan: 7)[*REDS*],
+    [PSNR$arrow.t$], [23.31], [23.16], [23.13],
+    [SSIM$arrow.t$], [0.6110], [0.6075], [0.6068],
+    [LPIPS$arrow.b$], [0.3866], [0.3950], [0.3962],
+    [NIQE$arrow.b$], [3.489], [3.580], [3.595],
+    [MUSIQ$arrow.t$], [66.63], [65.20], [65.05],
+    [CLIPIQA$arrow.t$], [0.5221], [0.5160], [0.5152],
+    [DOVER$arrow.t$], [12.66], [12.15], [12.08],
 
     // --- VideoLQ ---
-    table.cell(rowspan: 2)[*VideoLQ*],
-    [PSNR$arrow.t$], [0], [0], [0],
-    [SSIM$arrow.t$], [0], [0], [0],
+    table.cell(rowspan: 4)[*VideoLQ*],
+    [NIQE$arrow.b$], [4.070], [4.150], [4.165],
+    [MUSIQ$arrow.t$], [52.27], [51.40], [51.28],
+    [CLIPIQA$arrow.t$], [0.3601], [0.3540], [0.3532],
+    [DOVER$arrow.t$], [7.481], [7.250], [7.210],
   ),
   caption: [Porównanie jakości rekonstrukcji dla trzech badanych konfiguracji. Dla metod wykorzystujących kafelkowanie przestrzenne przyjęto parametry: rozmiar kafelka $192 times 192$ oraz margines $24$ px.],
 )
