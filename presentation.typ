@@ -517,7 +517,6 @@ W celu uruchomienia modelu na kartach graficznych klasy konsumenckiej, potok prz
 
 W ramach pracy przewidziałem realizację następujących etapów:
 #align(horizon)[
-  #set par(justify: true)
 
   #v(-1.5em)
   1. *Analiza technik kwantyzacji:*
