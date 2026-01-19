@@ -505,7 +505,7 @@ W celu uruchomienia modelu na kartach graficznych klasy konsumenckiej, potok prz
     // Kolumna 2: HR
     figure(
       // Zmień nazwę pliku na swoją
-      image("assets/example.gif", width: 70%),
+      image("assets/example_hq.gif", width: 70%),
       caption: [
         Wideo HR (FlashVSR).
       ],
