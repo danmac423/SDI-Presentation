@@ -68,27 +68,16 @@
 #title-slide()
 
 == Plan prezentacji
-#set align(horizon)
-#set par(leading: 1.5em)
+#align(horizon)[
+  #set par(leading: 1.5em)
 
-+ Cel pracy
-+ Wprowadzenie do problematyki VSR
-+ Podstawy teoretyczne: Transformery i Dyfuzja
-+ Analiza architektury FlashVSR
-+ Optymalizacja i implementacja
-+ Ewaluacja i podsumowanie
-
-// == Plan prezentacji
-// #align(horizon)[
-//   #set par(leading: 1em)
-//   #components.adaptive-columns(outline(
-//     target: heading.where(level: 1),
-//     title: none,
-//     indent: 1em,
-//   )) <touying:hidden>
-// ]
-
-// = Cel pracy
+  + Cel pracy
+  + Wprowadzenie do problematyki VSR
+  + Podstawy teoretyczne: Transformery i Dyfuzja
+  + Analiza architektury FlashVSR
+  + Optymalizacja i implementacja
+  + Ewaluacja i podsumowanie
+]
 
 == Cel pracy
 
