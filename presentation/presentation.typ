@@ -185,7 +185,7 @@
   $ 30 dot 3840 dot 2160 dot 3 dot 2 "bajty" approx 1.49 "GB" $
 
   #set par(justify: true)
-  W przypadku modeli dyfuzyjnych, wysokie zapotrzebowanie na VRAM podczas inferencji wynika z konieczności alokacji pamięci dla wielowymiarowych map cech oraz macierzy atencji.
+  W przypadku modeli dyfuzyjnych, wysokie zapotrzebowanie na VRAM podczas inferencji wynika z konieczności alokacji pamięci dla wielowymiarowych map cech oraz macierzy uwagi.
 ]
 
 = Podstawy teoretyczne: Transformery i dyfuzja
@@ -201,12 +201,6 @@
 
   + *Tokenizacja:*
     Obraz dzielony jest na sekwencję łat (ang. _patches_), które traktowane są analogicznie do słów w przetwarzaniu języka.
-  // + *Globalny mechanizm uwagi:* Umożliwia modelowanie *długodystansowych zależności*. Każdy fragment obrazu może czerpać informacje z każdego innego, niezależnie od odległości w czasoprzestrzeni.
-
-  // $ "Attention"(Q, K, V) = "softmax"((Q K^T) / sqrt(d_k)) V $
-
-  // + *Problem złożoności:*
-  //   Analiza globalna wiąże się ze *złożonością kwadratową* $O(N^2)$ względem liczby tokenów. Dla wideo wysokiej rozdzielczości (duże $N$) macierz atencji staje się wąskim gardłem pamięciowym.
 ]
 == Transformer wizyjny...
 
@@ -217,7 +211,7 @@
   $ "Attention"(Q, K, V) = "softmax"((Q K^T) / sqrt(d_k)) V $
 
   3. *Problem złożoności:*
-    Analiza globalna wiąże się ze *złożonością kwadratową* $O(N^2)$ względem liczby tokenów. Dla wideo wysokiej rozdzielczości macierz atencji staje się wąskim gardłem pamięciowym.
+    Analiza globalna wiąże się ze *złożonością kwadratową* $O(N^2)$ względem liczby tokenów. Dla wideo wysokiej rozdzielczości macierz uwagi staje się wąskim gardłem pamięciowym.
 ]
 
 == Transformer wizyjny
@@ -307,7 +301,7 @@
   - *Skalowalność:* Autorzy wykazali, że zwiększanie liczby warstw i parametrów modelu monotonicznie przekłada się na lepszy wynik.
 
 
-  - *Globalne przetwarzanie kontekstu:* DiT, dzięki mechanizmowi atencji, posiada globalne pole recepcji.
+  - *Globalne przetwarzanie kontekstu:* DiT, dzięki mechanizmowi uwagi, posiada globalne pole recepcji.
 
   // #v(1.5em)
   - *Uproszczenie architektury:* Zasąpienie struktury splotowej stosem powtarzalnych warstw, ułatwia projektowanie i trenowanie modelu.
@@ -328,7 +322,7 @@
     Model osiąga prędkość *~17 FPS* dla rozdzielczości $768 times 1408$ na pojedynczym układzie A100.
 
   - *Generalizacja do ultra-wysokich rozdzielczości:*
-    Dzięki unikalnej konstrukcji atencji, FlashVSR eliminuje błędy generalizacji przy skalowaniu do ultra-wysokich rozdzielczości.
+    Dzięki unikalnej konstrukcji uwagi, FlashVSR eliminuje błędy generalizacji przy skalowaniu do ultra-wysokich rozdzielczości.
 ]
 
 == FlashVSR...
@@ -357,8 +351,8 @@
 
   1. *Locality-Constrained Sparse Attention*
   // \ Rozwiązanie problemu artefaktów w 4K wynikających z periodyczności RoPE:
-  - *Ograniczenie lokalne:* Wymuszenie atencji w lokalnym oknie eliminuje błędy pozycyjne i zapobiega "zawijaniu się" wzorców,
-  - *Rzadka atencja:* Przetwarzanie jest wyłącznie *top-k* kluczowych obszarów.
+  - *Ograniczenie lokalne:* Wymuszenie uwagi w lokalnym oknie eliminuje błędy pozycyjne i zapobiega "zawijaniu się" wzorców,
+  - *Rzadka uwaga:* Przetwarzanie jest wyłącznie *top-k* kluczowych obszarów.
 
   2. *Tiny Conditional Decoder*
   - *Warunkowanie klatką LR:* Bezpośrednie wykorzystanie klatki niskiej rozdzielczości jako sygnału pomocniczego upraszcza zadanie sieci.
@@ -389,12 +383,12 @@
   ],
 )]
 
-== Optymalizacja mechanizmu atencji
+== Optymalizacja mechanizmu uwagi
 
 #align(horizon)[
   #v(1em)
   #set par(justify: true)
-  W celu redukcji zapotrzebowania na pamięć VRAM, bazowe mechanizmy atencji zastąpiłem ich bardziej wydajnymi odpowiednikami:
+  W celu redukcji zapotrzebowania na pamięć VRAM, bazowe mechanizmy uwagi zastąpiłem ich bardziej wydajnymi odpowiednikami:
   #v(0.5em)
   #align(center)[
     #grid(
@@ -408,10 +402,10 @@
   #v(0.5em)
 
   + *Sage Attention:*
-    Zastosowanie precyzyjnej kwantyzacji 8-bitowej (int8) w macierzach atencji.
+    Zastosowanie precyzyjnej kwantyzacji 8-bitowej (int8) w macierzach uwagi.
 
   + *Sparge Attention:*
-    Zoptymalizowany wariant rzadkiej atencji, redukujący złożoność obliczeniową dla tokenów o niskiej istotności.
+    Zoptymalizowany wariant rzadkiej uwagi, redukujący złożoność obliczeniową dla tokenów o niskiej istotności.
 ]
 
 = Ewaluacja\ i podsumowanie
@@ -474,7 +468,7 @@
     },
 
     // --- Nagłówek ---
-    [Zbiór danych], [Metryka], [FlashVSR], [FlashVSR + kafelkowanie], [FlashVSR + kafelkowanie + modyfikacja atencji],
+    [Zbiór danych], [Metryka], [FlashVSR], [FlashVSR + kafelkowanie], [FlashVSR + kafelkowanie + modyfikacja uwagi],
 
     // --- REDS ---
     table.cell(rowspan: 7)[*REDS*],
