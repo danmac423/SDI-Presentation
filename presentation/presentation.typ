@@ -83,7 +83,11 @@
 #align(horizon)[
   #set par(justify: true)
   #set par(leading: 1em)
-  Celem pracy jest opracowanie potoku przetwarzania w zadaniu super-rozdzielczości wideo (VSR) z wykorzystaniem modeli dyfuzyjnych na kartach graficznych klasy konsumenckiej. Istotnym elementem pracy jest także zbadanie wpływu technik optymalizacji na jakość rekonstruowanych materiałów.
+  Celem pracy jest implementacja potoku przetwarzania w zadaniu super-rozdzielczości wideo (VSR) z wykorzystaniem modeli dyfuzyjnych na kartach graficznych klasy konsumenckiej.
+
+  #v(1.5em)
+
+  Praca obejmuje również analizę wpływu zastosowanych technik redukcji zapotrzebowania na pamięć VRAM na jakość rekonstruowanego obrazu.
 ]
 
 
@@ -133,9 +137,8 @@
 
 == Sformułowanie zadania super-rozdzielczości wideo
 #align(horizon)[#figure(
-  image("assets/vsr.png", width: 90%),
+  image("../assets/vsr.png", width: 90%),
   caption: [Schemat zadania super-rozdzielczości wideo (VSR).
-    //  Model VSR rekonstruuje klatkę wysokiej rozdzielczości $hat(I)_("SR"_i)$ na podstawie sekwencji klatek niskiej rozdzielczości ${I_j}^(i+N)_(j=i-N)$.
   ],
 )]
 
@@ -169,7 +172,7 @@
     - $C$: Kanały kolorów (zazwyczaj 3 dla RGB),
     - $H$, $W$: Wysokość i szerokość (rozdzielczość).
   ][
-    #image("assets/video_tensor.png")
+    #image("../assets/video_tensor.png")
   ]
 ]
 
@@ -187,7 +190,7 @@
 
 = Podstawy teoretyczne: Transformery i dyfuzja
 
-== Vision Transformer...
+== Transformer wizyjny...
 
 #align(horizon)[
   #set par(justify: true)
@@ -205,7 +208,7 @@
   // + *Problem złożoności:*
   //   Analiza globalna wiąże się ze *złożonością kwadratową* $O(N^2)$ względem liczby tokenów. Dla wideo wysokiej rozdzielczości (duże $N$) macierz atencji staje się wąskim gardłem pamięciowym.
 ]
-== Vision Transformer...
+== Transformer wizyjny...
 
 #align(horizon)[
   #set par(justify: true)
@@ -217,10 +220,10 @@
     Analiza globalna wiąże się ze *złożonością kwadratową* $O(N^2)$ względem liczby tokenów. Dla wideo wysokiej rozdzielczości macierz atencji staje się wąskim gardłem pamięciowym.
 ]
 
-== Vision Transformer
+== Transformer wizyjny
 #align(horizon)[#figure(
-  image("assets/vit.png", width: 80%),
-  caption: [Schemat architektury Vision Transformer (ViT) @dosovitskiy2021.
+  image("../assets/vit_pl.png", width: 80%),
+  caption: [Schemat architektury Transformera wizyjnego (ang. _Vision Transformer_, ViT) @dosovitskiy2021.
     // Obraz wejściowy dzielony jest na sekwencję łat (ang. patches) o stałym rozmiarze. Po liniowym rzutowaniu i dodaniu kodowania pozycyjnego, sekwencja wektorów trafia do standardowego enkodera Transformera.
   ],
 )]
@@ -231,6 +234,8 @@
   #set par(justify: true)
 
   Modele dyfuzyjne @ho2020denoisingdiffusionprobabilisticmodels to probabilistyczne modele generatywne, które uczą się tworzyć dane poprzez *iteracyjne odwracanie procesu degradacji*. Całość opiera się na dwóch łańcuchach Markowa:
+
+  #v(1em)
 
   + *Proces zaszumiania\:*
     Polega na stopniowym, krokowym dodawaniu szumu Gaussa do obrazu wejściowego $x_0$. Po wykonaniu $T$ kroków, oryginalny obraz zamienia się w całkowity szum losowy.
@@ -249,7 +254,7 @@
   #line(length: 100%, stroke: 0.5pt + gray)
 
   #figure(
-    image("assets/diff_graph.png", width: 90%),
+    image("../assets/diff_graph.png", width: 90%),
     caption: [
       Schemat działania modelu dyfuzyjnego @ho2020denoisingdiffusionprobabilisticmodels.
       // Proces generatywny $p_theta$ iteracyjnie rekonstruuje obraz $x_0$ z szumu $x_T$, odwracając proces degradacji $q$.
@@ -262,13 +267,13 @@
 #align(horizon)[
   #set par(justify: true)
 
-  Peebles i Xie @peebles2023scalablediffusionmodelstransformers zaproponowali zastąpienie klasycznego U-Netu architekturą Transformera. Proces przetwarzania przebiega w trzech krokach:
+  Peebles i Xie @peebles2023scalablediffusionmodelstransformers zaproponowali architekturę Diffusion Transformer (DiT), gdzie zastąpili klasyczny U-Net architekturą Transformera. Proces przetwarzania przebiega w trzech krokach:
 
   + *Tokenizacja:*
     Wejściowy zaszumiony tensor (*w przestrzeni ukrytej*) jest dzielony na sekwencję łat $x_p$.
 
   + *Bloki Transformera z mechanizmem adaLN:*
-    Zamiast standardowej normalizacji, w DiT zastosowano *Adaptive Layer Norm (adaLN)*.
+    Zamiast standardowej normalizacji, zastosowano *Adaptive Layer Norm (adaLN)*.
   // Parametry normalizacji (skala $gamma$ i przesunięcie $beta$) nie są stałe, lecz generowane dynamicznie na podstawie wektora czasu $t$ i warunku $c$.
   // $ "adaLN"(h, t, c) = gamma(t, c) dot "Norm"(h) + beta(t, c) $
   // _Co to oznacza?_ Sieć "wie", jak mocno modyfikować cechy w zależności od tego, czy jest to początek (duży szum), czy koniec procesu (detale).
@@ -280,7 +285,7 @@
 == Architektura Diffusion Transformer...
 
 #align(horizon)[#figure(
-  image("assets/dit.png", width: 50%),
+  image("../assets/dit_pl.png", width: 50%),
   caption: [Schemat architektury Diffusion Transformer (DiT).
     Po lewej: Globalny przepływ danych.
     // Zaszumiony tensor wejściowy jest dzielony na sekwencję łat , przetwarzany przez $N$ bloków transformera, a następnie rzutowany przez warstwę liniową i formowany w tensor wyjściowy.
@@ -292,23 +297,20 @@
 == Architektura Diffusion Transformer
 #set par(justify: true)
 
-W dotychczasowych modelach dyfuzyjnych standardem był splotowy \
-U-Net. Zastąpienie go architekturą DiT wnosi kluczowe ulepszenia:
 #align(horizon)[
   #set par(justify: true)
+  W dotychczasowych modelach dyfuzyjnych standardem był splotowy \
+  U-Net. Zastąpienie go architekturą DiT wnosi kluczowe ulepszenia:
+
+  #v(1em)
+
+  - *Skalowalność:* Autorzy wykazali, że zwiększanie liczby warstw i parametrów modelu monotonicznie przekłada się na lepszy wynik.
 
 
-  #v(-1.5em)
-  - *Skalowalność*,
-  // W przeciwieństwie do U-Netów, gdzie zysk z dodawania parametrów jest nieoczywisty, DiT wykazuje silną korelację między mocą obliczeniową (Gflops) a jakością obrazu (FID). Większy model monotonicznie przekłada się na lepszy wynik.
+  - *Globalne przetwarzanie kontekstu:* DiT, dzięki mechanizmowi atencji, posiada globalne pole recepcji.
 
-
-  #v(1.5em)
-  - *Globalne przetwarzanie kontekstu*,
-  // U-Net opiera się na lokalnych splotach, co wymusza stosowanie głębokich struktur downsamplingu, aby "widzieć" cały obraz. DiT, dzięki mechanizmowi atencji, posiada globalne pole recepcji od pierwszej warstwy, eliminując potrzebę skomplikowanych hierarchii przestrzennych.
-
-  #v(1.5em)
-  - *Uproszczenie architektury.*
+  // #v(1.5em)
+  - *Uproszczenie architektury:* Zasąpienie struktury splotowej stosem powtarzalnych warstw, ułatwia projektowanie i trenowanie modelu.
   // DiT usuwa specyficzne dla U-Netu "indukcyjne obciążenia" (ang. _inductive biases_), dowodząc, że specjalizowana architektura splotowa nie jest konieczna do osiągnięcia wyników State-of-the-Art.
 ]
 
@@ -316,45 +318,38 @@ U-Net. Zastąpienie go architekturą DiT wnosi kluczowe ulepszenia:
 
 == FlashVSR...
 #set par(justify: true)
-FlashVSR @zhuang2025flashvsrrealtimediffusionbasedstreaming to model dyfuzyjny do VSR działający w trybie strumieniowym i generujący wynik w pojedynczym kroku.
 
 #align(horizon)[
   #set par(justify: true)
+  FlashVSR @zhuang2025flashvsrrealtimediffusionbasedstreaming to model dyfuzyjny do VSR działający w trybie strumieniowym i generujący wynik w pojedynczym kroku.
 
-  // Rozwiązuje on problem wysokich opóźnień (latency) typowych dla dyfuzji.
-
-  #v(-1.5em)
+  #v(1em)
   - *Wydajność SOTA:*
     Model osiąga prędkość *~17 FPS* dla rozdzielczości $768 times 1408$ na pojedynczym układzie A100.
-  // Stanowi to nawet *12-krotne przyspieszenie* względem dotychczasowych modeli one-step.
-  #v(1.5em)
 
   - *Generalizacja do ultra-wysokich rozdzielczości:*
     Dzięki unikalnej konstrukcji atencji, FlashVSR eliminuje błędy generalizacji przy skalowaniu do ultra-wysokich rozdzielczości.
 ]
 
-== FlashVSR
+== FlashVSR...
 #set par(justify: true)
 
-Fundamentem FlashVSR jest trójetapowy proces destylacji wiedzy oraz architektura przystosowana do przetwarzania przyczynowego (causal).
 
 #align(horizon)[
   #set par(justify: true)
+  Fundamentem FlashVSR jest trójetapowy proces destylacji wiedzy oraz architektura przystosowana do przetwarzania przyczynowego (causal).
 
-  #v(-1em)
+  #v(1em)
 
   - *Nauczyciel i Uczeń:*
     Wiedza z potężnego modelu nauczyciela jest destylowana do lekkiego modelu ucznia.
-  // (Full-Attention Teacher) -> (Sparse-Causal Student)
-  #v(1.5em)
 
   - *Przetwarzanie strumieniowe (KV Cache):*
     Model wykorzystuje mechanizm *KV Cache*, znany z dużych modeli językowych.
-  // Pozwala to na przetwarzanie tokenów (causal processing) bez konieczności ponownego obliczania cech dla poprzednich tokenów, co drastycznie redukuje narzut obliczeniowy.
 ]
 
 
-== Innowacje architektury FlashVSR
+== FlashVSR...
 
 #align(horizon)[
   #set par(justify: true)
@@ -373,16 +368,14 @@ Fundamentem FlashVSR jest trójetapowy proces destylacji wiedzy oraz architektur
 
 == Implementacja potoku przetwarzania...
 
-W celu uruchomienia modelu na kartach graficznych klasy konsumenckiej, zaimplementowałem potok przetwarzania wykorzystujący techniki kafelkowania:
 #align(horizon)[
   #set par(justify: true)
-  #v(-1em)
+  W celu uruchomienia modelu na kartach graficznych klasy konsumenckiej, zaimplementowałem potok przetwarzania wykorzystujący techniki kafelkowania:
+  #v(1em)
 
 
   1. *Kafelkowanie czasowe:*
     Wideo jest przetwarzana sekwencyjnie w krótszych klipach.
-
-  #v(1em)
 
   2. *Kafelkowanie przestrzenne:*
     Każda klatka dzielona jest na mniejsze fragmenty z uwzględnieniem marginesu.
@@ -391,7 +384,7 @@ W celu uruchomienia modelu na kartach graficznych klasy konsumenckiej, zaimpleme
 == Implementacja potoku przetwarzania
 
 #align(horizon)[#figure(
-  image("assets/tiling.png", width: 60%),
+  image("../assets/tiling.png", width: 60%),
   caption: [Przykład kafelkowania przestrzennego.
   ],
 )]
@@ -399,10 +392,10 @@ W celu uruchomienia modelu na kartach graficznych klasy konsumenckiej, zaimpleme
 == Optymalizacja mechanizmu atencji
 
 #align(horizon)[
-  #set par(justify: true)
-  Istotną modyfikacją względem oryginalnej architektury była wymiana kerneli obliczeniowych atencji:
-
   #v(1em)
+  #set par(justify: true)
+  W celu redukcji zapotrzebowania na pamięć VRAM, bazowe mechanizmy atencji zastąpiłem ich bardziej wydajnymi odpowiednikami:
+  #v(0.5em)
   #align(center)[
     #grid(
       columns: (40%, 10%, 40%),
@@ -412,7 +405,7 @@ W celu uruchomienia modelu na kartach graficznych klasy konsumenckiej, zaimpleme
       [*Modyfikacja* \ Sage Attention \ + Sparge Attention],
     )
   ]
-  #v(1em)
+  #v(0.5em)
 
   + *Sage Attention:*
     Zastosowanie precyzyjnej kwantyzacji 8-bitowej (int8) w macierzach atencji.
@@ -423,10 +416,36 @@ W celu uruchomienia modelu na kartach graficznych klasy konsumenckiej, zaimpleme
 
 = Ewaluacja\ i podsumowanie
 
+== Metryki referencyjne
+#text(size: 24pt)[#align(horizon)[
+  Porównują wynik z oryginałem. Weryfikują *wierność* rekonstrukcji.
+  #v(1em)
+  - *PSNR (Peak Signal-to-Noise Ratio):*
+    Klasyczna miara oparta na błędzie średniokwadratowym pikseli. Określa matematyczną wierność sygnału.
+
+  - *SSIM (Structural Similarity Index):*
+    Ocenia podobieństwo strukturalne obrazów, uwzględniając luminancję, kontrast i strukturę.
+
+  - *LPIPS (Learned Perceptual Image Patch Similarity):*
+    Nowoczesna miara percepcyjna obliczająca dystans między obrazami w przestrzeni cech głębokiej sieci neuronowej.
+]]
+== Metryki bezreferencyjne
+#text(size: 23pt)[#align(horizon)[
+  Oceniają jakość obrazu bez dostępu do oryginału. Weryfikują *jakość percepcyjną i naturalność*.
+
+  - *NIQE (Naturalness Image Quality Evaluator):*
+    Bada odchylenia statystyk obrazu od modelu naturalnych scen. Pozwala wykryć nienaturalne zniekształcenia.
+
+  - *MUSIQ (Multi-scale Image Quality Transformer):*
+    Wykorzystuje architekturę Transformer do oceny jakości obrazu na wielu skalach jednocześnie.
+
+  - *CLIPIQA:*
+    Wykorzystuje model językowo-wizualny CLIP do oceny estetyki obrazu.
+
+  - *DOVER (Disentangled Objective Video Quality Evaluator):*
+    Rozdziela ocenę na dwa niezależne aspekty: jakość *techniczną* oraz *estetyczną*.
+]]
 == Wyniki eksperymentów
-
-// Poniższa tabela przedstawia porównanie jakości rekonstrukcji dla trzech badanych konfiguracji. Dla metod wykorzystujących kafelkowanie przestrzenne przyjęto parametry: *rozmiar kafelka $192 times 192$* oraz *margines $24$ px*.
-
 
 #show table: set text(size: 0.6em)
 #show figure.where(kind: table): set figure.caption(position: top)
@@ -495,7 +514,7 @@ W celu uruchomienia modelu na kartach graficznych klasy konsumenckiej, zaimpleme
     // Kolumna 1: LR
     figure(
       // Zmień nazwę pliku na swoją
-      image("assets/example.gif", width: 70%),
+      image("../assets/example.gif", width: 70%),
       caption: [
         Wideo LR.
       ],
@@ -504,7 +523,7 @@ W celu uruchomienia modelu na kartach graficznych klasy konsumenckiej, zaimpleme
     // Kolumna 2: HR
     figure(
       // Zmień nazwę pliku na swoją
-      image("assets/example_hq.gif", width: 70%),
+      image("../assets/example_hq.gif", width: 70%),
       caption: [
         Wideo HR (FlashVSR).
       ],
