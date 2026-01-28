@@ -14,7 +14,13 @@
   abstract: [
     Adaptacja modeli dyfuzyjnych typu Diffusion Transformer (DiT) do zadania super-rozdzielczości wideo (VSR) wiąże się z wysokimi wymaganiami pamięciowymi, często uniemożliwiającymi inferencję na sprzęcie konsumenckim. Niniejszy artykuł prezentuje zoptymalizowany potok przetwarzania oparty na architekturze FlashVSR, umożliwiający efektywne uruchomienie modelu na kartach graficznych z 10 GB VRAM. Wdrożono strategię kafelkowania przestrzennego oraz zastąpiono standardowe mechanizmy uwagi wydajnymi wariantami: kwantyzowanym SageAttention oraz dynamicznie rzadkim SpargeAttention. Wyniki eksperymentów na zbiorach REDS i VideoLQ potwierdzają, że proponowane podejście skutecznie redukuje narzut pamięciowy przy marginalnym spadku wierności rekonstrukcji, czyniąc zaawansowane metody VSR bardziej dostępnymi.
   ],
-  keywords: ("Super-rozdzielczość wideo", "Modele dyfuzyjne", "FlashVSR", "Transformery wizyjne", "Optymalizacja pamięciowa"),
+  keywords: (
+    "Super-rozdzielczość wideo",
+    "Modele dyfuzyjne",
+    "FlashVSR",
+    "Transformery wizyjne",
+    "Optymalizacja pamięciowa",
+  ),
   bibliography: bibliography("refs.bib"),
   // optional configuration of page (takes all page parameter)
   // page_config: (paper: "a4")
@@ -22,7 +28,14 @@
 
 = Wprowadzenie
 
-Super-rozdzielczość wideo (ang. _Video Super-Resolution_, VSR) stanowi kluczowe zagadnienie w dziedzinie niskopoziomowego widzenia komputerowego, którego celem jest rekonstrukcja sekwencji wideo o wysokiej rozdzielczości (HR) z materiałów wejściowych o niskiej rozdzielczości (LR) @baniya24. W przeciwieństwie do super-rozdzielczości pojedynczego obrazu (SISR), zadanie to wymaga efektywnego wykorzystania korelacji czasowych oraz informacji zawartych w sąsiednich klatkach w celu odzyskania brakujących detali i zachowania spójności czasowej @baniya24. Dynamiczny rozwój głębokiego uczenia (ang. Deep Learning) w ostatniej dekadzie doprowadził do powstania zaawansowanych architektur, początkowo opartych na konwolucyjnych sieciach neuronowych (CNN), a następnie na Transformerach, które zdominowały zadania przetwarzania sekwencji @dosovitskiy2021@baniya24.
+Super-rozdzielczość wideo (ang. _Video Super-Resolution_, VSR) stanowi kluczowe zagadnienie w dziedzinie niskopoziomowego widzenia komputerowego, którego celem jest rekonstrukcja sekwencji wideo o wysokiej rozdzielczości (HR) z materiałów wejściowych o niskiej rozdzielczości (LR) @baniya24. W przeciwieństwie do super-rozdzielczości pojedynczego obrazu (SISR), zadanie to wymaga efektywnego wykorzystania korelacji czasowych oraz informacji zawartych w sąsiednich klatkach w celu odzyskania brakujących detali i zachowania spójności czasowej @baniya24.
+
+#figure(
+  image("../../assets/vsr.png", width: 80%),
+  caption: [Ogólny schemat procesu super-rozdzielczości wideo (VSR). Model rekonstruuje klatkę wysokiej rozdzielczości na podstawie sekwencji klatek wejściowych.],
+) <fig:vsr>
+
+Dynamiczny rozwój głębokiego uczenia (ang. Deep Learning) w ostatniej dekadzie doprowadził do powstania zaawansowanych architektur, początkowo opartych na konwolucyjnych sieciach neuronowych (CNN), a następnie na Transformerach, które zdominowały zadania przetwarzania sekwencji @dosovitskiy2021@baniya24.
 
 W ostatnich latach szczególną uwagę badaczy przyciągają probabilistyczne modele dyfuzyjne (ang. _Denoising Diffusion Probabilistic Models_, DDPM), które dzięki iteracyjnemu procesowi odszumiania pozwalają na generowanie próbek o jakości przewyższającej tradycyjne podejścia, takie jak GAN czy VAE @ho2020denoisingdiffusionprobabilisticmodels. Ewolucja tych systemów doprowadziła do powstania architektury Diffusion Transformer (DiT), która zastępuje tradycyjny szkielet U-Net mechanizmem uwagi, oferując lepszą skalowalność i efektywność w zadaniach generatywnych @peebles2023scalablediffusionmodelstransformers. Jednakże adaptacja modeli DiT do zadania VSR wiąże się z istotnymi wyzwaniami obliczeniowymi. Mechanizm uwagi charakteryzuje się kwadratową złożonością czasową i pamięciową $O(N^2)$ względem długości sekwencji wejściowej. W kontekście wideo, gdzie sekwencja tokenów obejmuje wymiary przestrzenne i czasowe, prowadzi to do zaporowego zapotrzebowania na pamięć GPU, co często uniemożliwia inferencję na sprzęcie konsumenckim.
 
@@ -52,7 +65,14 @@ $
   I_j = D B E_(i->j)hat(I)_i + n_j,
 $<degradation_eq_dbe>
 
-gdzie $D$ oznacza operator podpróbkowania (downsampling), $B$ reprezentuje operator rozmycia (blur), a $n_j$ to addytywny szum. Kluczowym elementem w kontekście wideo jest operator $E_(i -> j)$, który oznacza operację zniekształcenia (warping) zgodną z ruchem od klatki $i$ do $j$. Model ten zakłada, że klatka LR powstaje poprzez przekształcenie geometryczne klatki HR, jej rozmycie, zmniejszenie rozdzielczości oraz dodanie szumu.
+gdzie $D$ oznacza operator podpróbkowania (downsampling), $B$ reprezentuje operator rozmycia (blur), a $n_j$ to addytywny szum. Kluczowym elementem w kontekście wideo jest operator $E_(i -> j)$, który oznacza operację zniekształcenia (warping) zgodną z ruchem od klatki $i$ do $j$.
+
+#figure(
+  image("../../assets/degradation.png", width: 100%),
+  caption: [Ilustracja modelu degradacji. Klatka HR podlega przekształceniom geometrycznym, rozmyciu, podpróbkowaniu i zaszumieniu, tworząc klatkę LR.],
+) <fig:degradation>
+
+Model ten zakłada, że klatka LR powstaje poprzez przekształcenie geometryczne klatki HR, jej rozmycie, zmniejszenie rozdzielczości oraz dodanie szumu.
 
 Celem modelu VSR jest znalezienie funkcji odwzorowującej $f_("VSR")$, sparametryzowanej przez wagi $theta_(f_("VSR"))$, która estymuje klatkę wysokiej rozdzielczości $hat(I)_("SR"_i)$ na podstawie sekwencji klatek wejściowych LR @liu22:
 
@@ -64,15 +84,34 @@ $<vsr_eq>
 
 Architektura Transformer, która stała się standardem w przetwarzaniu języka naturalnego, znalazła skuteczne zastosowanie w wizji komputerowej pod postacią Tranformera wizyjnego (ang. _Vision Transformer_, ViT). W przeciwieństwie do splotowych sieci neuronowych (CNN), które polegają na lokalnych operacjach splotu i wbudowanych założeniach indukcyjnych dotyczących lokalności i niezmienniczości przesunięcia, ViT interpretuje obraz jako sekwencję łat (ang. patches), przetwarzając je za pomocą standardowego enkodera Transformer @dosovitskiy2021.
 
+#figure(
+  image("../../assets/vit_pl.png", width: 90%),
+  caption: [Schemat działania Transformera wizyjnego (ViT). Obraz dzielony jest na łaty, rzutowany liniowo i przetwarzany przez warstwy atencji.],
+) <fig:vit>
+
 W modelu ViT obraz wejściowy $x in RR^(H times W times C)$ jest dzielony na sekwencję spłaszczonych łat 2D $x in RR^(N times (P^2 dot.c C))$, gdzie $(P,P)$ to rozdzielczość pojedynczej łaty, a $N=H W\/ P^2$ stanowi efektywną długość sekwencji wejściowej. Każda łata jest następnie rzutowana liniowo do stałego wymiaru ukrytego $D$, a do uzyskanych wektorów dodawane są wyuczalne zanurzenia pozycyjne, aby zachować informację o strukturze przestrzennej obrazu. Tak przygotowana sekwencja tokenów jest przetwarzana przez warstwy wielogłowicowej uwagi (ang. _Multi-Head Self-Attention_, MSA), co pozwala modelowi na integrację informacji z całego obrazu już w pierwszych warstwach sieci, w przeciwieństwie do ograniczonego pola recepcyjnego w CNN @dosovitskiy2021.
 
 Bezpośrednia adaptacja mechanizmu MSA do materiałów wideo wiąże się z opisanym we wstępie problemem eksplozji liczby tokenów $N$. Ponieważ sekwencja obejmuje wymiar czasowy, standardowa macierz uwagi staje się wąskim gardłem, co motywuje poszukiwanie wariantów atencji o zredukowanej złożoności lub zastosowanie technik okienkowych.
 
 == Modele dyfuzyjne i architektura Diffusion Transformer (DiT)
 
-Probabilistyczne modele dyfuzyjne odszumiania (DDPM) zrewolucjonizowały dziedzinę syntezy obrazów, oferując wyższą jakość generowanych próbek i większą różnorodność w porównaniu do wcześniejszych architektur GAN @peebles2023scalablediffusionmodelstransformers. Działanie tych modeli opiera się na dwóch procesach: ustalonym procesie "w przód", który stopniowo dodaje szum Gaussa do danych aż do uzyskania czystego szumu, oraz wyuczalnym procesie "wstecz", który iteracyjnie odtwarza strukturę danych z szumu, modelując rozkład warunkowy $p_(theta)(x_(t-1)divides x_(t))$ @ho2020denoisingdiffusionprobabilisticmodels. Tradycyjnie, jako szkielet (ang. _backbone_) dla procesu odszumiania wykorzystywano architekturę U-Net opartą na splotach.
+Probabilistyczne modele dyfuzyjne odszumiania (DDPM) zrewolucjonizowały dziedzinę syntezy obrazów, oferując wyższą jakość generowanych próbek i większą różnorodność w porównaniu do wcześniejszych architektur GAN @peebles2023scalablediffusionmodelstransformers. Działanie tych modeli opiera się na dwóch procesach: ustalonym procesie "w przód", który stopniowo dodaje szum Gaussa do danych aż do uzyskania czystego szumu, oraz wyuczalnym procesie "wstecz", który iteracyjnie odtwarza strukturę danych z szumu, modelując rozkład warunkowy $p_(theta)(x_(t-1)divides x_(t))$ @ho2020denoisingdiffusionprobabilisticmodels.
 
-Ostatnie badania, w tym praca Peeblesa i Xie @peebles2023scalablediffusionmodelstransformers, zaproponowały nową klasę modeli określaną jako Diffusion Transformers (DiT), która zastępuje tradycyjny U-Net architekturą Transformera działającą na reprezentacji utajonej (ang. _latent space_). W podejściu tym obraz wejściowy zakodowany przez autoenkoder wariacyjny (ang. _variational autoencoder_, VAE) jest dzielony na sekwencję łat, analogicznie jak w modelu ViT, a następnie przetwarzany przez standardowe bloki transformera. Kluczowym elementem adaptacji Transformera do zadań generatywnych jest mechanizm warunkowania. W architekturze DiT zastosowano warstwę Adaptive Layer Normalization (adaLN), która wykorzystuje parametry skali i przesunięcia w warstwach normalizacyjnych na podstawie wektorów osadzenia czasu (ang. _timestep_) i warunku (np. etykiety klasy lub obrazu LR).
+#figure(
+  image("../../assets/diff_graph.png", width: 80%),
+  caption: [Graf probabilistyczny modelu dyfuzyjnego. Proces w przód ($q$) degraduje obraz do szumu, a proces wsteczny ($p_theta$) rekonstruuje obraz.],
+) <fig:diff_graph>
+
+Tradycyjnie, jako szkielet (ang. _backbone_) dla procesu odszumiania wykorzystywano architekturę U-Net opartą na splotach.
+
+Ostatnie badania, w tym praca Peeblesa i Xie @peebles2023scalablediffusionmodelstransformers, zaproponowały nową klasę modeli określaną jako Diffusion Transformers (DiT), która zastępuje tradycyjny U-Net architekturą Transformera działającą na reprezentacji utajonej (ang. _latent space_). W podejściu tym obraz wejściowy zakodowany przez autoenkoder wariacyjny (ang. _variational autoencoder_, VAE) jest dzielony na sekwencję łat, analogicznie jak w modelu ViT, a następnie przetwarzany przez standardowe bloki transformera.
+
+#figure(
+  image("../../assets/dit_pl.png", width: 75%),
+  caption: [Architektura DiT (po lewej) oraz szczegółowa budowa bloku DiT z mechanizmem adaLN-Zero (po prawej), sterującym procesem generacji na podstawie kroku czasowego $t$ i warunku $y$.],
+) <fig:dit>
+
+Kluczowym elementem adaptacji Transformera do zadań generatywnych jest mechanizm warunkowania. W architekturze DiT zastosowano warstwę Adaptive Layer Normalization (adaLN), która wykorzystuje parametry skali i przesunięcia w warstwach normalizacyjnych na podstawie wektorów osadzenia czasu (ang. _timestep_) i warunku (np. etykiety klasy lub obrazu LR).
 
 Główną zaletą architektury DiT jest jej przewidywalna skalowalność. Autorzy wykazali silną korelację między złożonością obliczeniową modelu, a jakością generowanych obrazów - zwiększanie głębokości lub szerokości sieci prowadzi do systematycznej poprawy wyników, co czyni DiT atrakcyjnym wyborem dla zadań wymagających wysokiej wierności, takich jak VSR.
 
@@ -93,6 +132,11 @@ Uzupełnieniem architektury jest zoptymalizowany moduł dekodujący, określany 
 == Strategia kafelkowania przestrzenno-czasowego
 
 W celu przezwyciężenia ograniczeń pamięci VRAM, uniemożliwiających przetwarzanie całego wideo wysokiej rozdzielczości, zastosowano dekompozycję danych. W domenie czasowej długa sekwencja dzielona jest na nakładające się klipy, które są przetwarzane niezależnie, a ich spójność na granicach zapewnia uśrednianie predykcji.
+
+#figure(
+  image("../../assets/tiling.png", width: 90%),
+  caption: [Wizualizacja strategii kafelkowania. Obraz jest dzielony na nakładające się fragmenty, a wagi (prawy dolny róg) zapewniają płynne przejścia na granicach kafelków.],
+) <fig:tiling>
 
 Kluczowym elementem implementacji jest kafelkowanie przestrzenne. Wideo wejściowe jest dzielone na regularną siatkę, nakładających się na siebie, fragmentów o ustalonej rozdzielczości (w eksperymentach przyjęto $192 times 192$ pikseli). Tak zdefiniowane fragmenty są przetwarzane przez model sekwencyjnie, co pozwala na utrzymanie stałego, niskiego zużycia pamięci niezależnie od rozdzielczości materiału wejściowego. Rekonstrukcja pełnej klatki polega na złożeniu przetworzonych fragmentów w jedną całość, przy czym na granicach kafelków ostateczna wartość pikseli jest obliczana poprzez uśrednienie predykcji. Podejście to skutecznie eliminuje widoczność szwów łączenia, zapewniając spójność strukturalną obrazu wynikowego przy minimalnym narzucie obliczeniowym.
 

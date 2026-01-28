@@ -135,10 +135,12 @@
   show figure.where(kind: table): set figure.caption(position: top) // caption for table above figure
   show figure.where(kind: image): set image(width: 100%)
   set figure(gap: 4.5mm)
-  show figure: pad.with(top: 20.5pt, bottom: 22pt)
+  // show figure: pad.with(top: 20.5pt, bottom: 22pt)
   show figure: set text(9pt)
-  show figure: align.with(center)
-  // let Figure display as Fig
+  set figure(placement: auto)
+  show figure: it => {
+    place(it.placement, float: true, it)
+  } // let Figure display as Fig
   let fig_replace(it) = {
     show "Figure": "Fig."
     it
